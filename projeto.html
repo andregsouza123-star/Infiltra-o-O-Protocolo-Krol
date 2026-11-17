@@ -1,0 +1,2980 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infiltração: O Protocolo Krol - Edição Especial Rey Jones</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body {
+            background-color: #050811;
+            color: #f0f4f8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            background-image: radial-gradient(circle at 50% 50%, #0d1527 0%, #050811 100%);
+        }
+        #game-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #game-container {
+            position: relative;
+            width: 850px;
+            height: 480px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.15);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            background: #090d16;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: #090d16;
+            image-rendering: auto;
+        }
+        /* HUD & Overlay */
+        #ui-overlay {
+            position: absolute;
+            top: 14px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .ui-box {
+            background: rgba(15, 23, 42, 0.88);
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(56, 189, 248, 0.08);
+            backdrop-filter: blur(4px);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #hp-container {
+            width: 140px;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        #hp-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ef4444 0%, #eab308 50%, #22c55e 100%);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            transition: width 0.15s ease-out;
+        }
+        #ui-special-badge {
+            display: none;
+            background: rgba(147, 51, 234, 0.3);
+            border-color: #a855f7;
+            color: #d8b4fe;
+            animation: pulse-glow 1.5s infinite alternate;
+        }
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 5px rgba(168, 85, 247, 0.3); }
+            to { box-shadow: 0 0 15px rgba(168, 85, 247, 0.7); }
+        }
+
+        /* Diálogos & Cutscenes Controladas por Espaço */
+        #dialogue-box {
+            position: absolute;
+            bottom: 18px;
+            left: 25px;
+            right: 25px;
+            background: rgba(11, 19, 38, 0.98);
+            border: 2px solid #38bdf8;
+            border-radius: 10px;
+            padding: 16px 22px;
+            display: none;
+            z-index: 25;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 25px rgba(56, 189, 248, 0.25);
+            animation: slide-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slide-up {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        #dialogue-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        #dialogue-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: #0284c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.8);
+        }
+        #dialogue-speaker {
+            font-size: 13px;
+            color: #38bdf8;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #dialogue-text {
+            font-size: 15px;
+            line-height: 1.5;
+            color: #f1f5f9;
+            min-height: 42px;
+        }
+        #dialogue-prompt {
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: right;
+            margin-top: 6px;
+            letter-spacing: 0.5px;
+        }
+        #dialogue-prompt strong {
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        /* Telas de Fim de Jogo / Vitória */
+        #screen-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 26px;
+            font-weight: 800;
+            color: #38bdf8;
+            text-shadow: 0 0 20px rgba(56, 189, 248, 0.8);
+            display: none;
+            z-index: 35;
+            text-align: center;
+            background: rgba(11, 15, 25, 0.95);
+            padding: 28px 45px;
+            border-radius: 14px;
+            border: 2px solid #38bdf8;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
+            min-width: 380px;
+        }
+        #msg-sub {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 8px;
+            font-weight: normal;
+        }
+
+        /* Menu Principal */
+        #menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 40%, #172554 0%, #0b0f19 75%, #050811 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+            padding: 20px;
+        }
+        .cyber-logo {
+            font-size: 38px;
+            font-weight: 900;
+            margin-bottom: 6px;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8, #38bdf8);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+            animation: shine 4s linear infinite;
+        }
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+        p.subtitle {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .btn {
+            background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+            color: white;
+            border: 1px solid #38bdf8;
+            padding: 13px 36px;
+            font-size: 15px;
+            font-weight: 800;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4);
+            letter-spacing: 1px;
+        }
+        .btn:hover {
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(56, 189, 248, 0.6);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        #controls-hint {
+            margin-top: 25px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            line-height: 1.6;
+        }
+        #controls-hint strong {
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <div id="game-container">
+        <!-- Menu Principal -->
+        <div id="menu-screen">
+            <h1 class="cyber-logo">INFILTRAÇÃO: O PROTOCOLO KROL</h1>
+            <p class="subtitle">Rey Jones Operação Tática • Edição Aprimorada</p>
+            <button class="btn" id="btn-start">INICIAR MISSÃO</button>
+            <div id="controls-hint">
+                <strong>Comandos de Infiltração:</strong><br>
+                [Setas / A, D] - Mover &nbsp;|&nbsp; [Espaço] - Pular / Avançar Diálogos<br>
+                [Z] - Disparar Canhão Cibernético &nbsp;|&nbsp; [E] - Falar com Cientistas e Entrar em Portas<br>
+                [G] - Inverter Gravidade (Fase 3)
+            </div>
+        </div>
+
+        <!-- UI do Jogo -->
+        <div id="ui-overlay" style="display: none;">
+            <div class="ui-box">
+                <span id="ui-hp-label" style="color: #38bdf8;">HP</span>
+                <div id="hp-container">
+                    <div id="hp-fill"></div>
+                </div>
+                <span id="ui-hp-val" style="font-size: 12px; color: #cbd5e1;">100 / 100</span>
+            </div>
+            <div class="ui-box" id="ui-special-badge">MODO ESPECIAL</div>
+            <div class="ui-box" id="ui-location" style="color: #38bdf8;">SETOR: ENTRADA</div>
+            <div class="ui-box" id="ui-objective" style="color: #f1f5f9;">OBJETIVO: Infiltrar a estação</div>
+        </div>
+
+        <!-- Caixa de Diálogo/Cutscenes -->
+        <div id="dialogue-box">
+            <div id="dialogue-header">
+                <div id="dialogue-avatar">⚡</div>
+                <div id="dialogue-speaker">TRANSMISSÃO</div>
+            </div>
+            <div id="dialogue-text">Texto da transmissão...</div>
+            <div id="dialogue-prompt">Pressione <strong>[ESPAÇO]</strong> para continuar ▶</div>
+        </div>
+
+        <!-- Mensagens de Tela (Vitória/Morte) -->
+        <div id="screen-message">
+            <div id="msg-title">FIM DE JOGO</div>
+            <div id="msg-sub">Protocolo comprometido</div>
+            <button class="btn" id="btn-restart" style="margin-top: 20px;">RETORNAR AO ESCONDERIJO</button>
+        </div>
+
+        <!-- Canvas do Jogo -->
+        <canvas id="gameCanvas" width="850" height="480"></canvas>
+    </div>
+</div>
+
+<script>
+// =================================================================
+// 1. MOTOR DE ÁUDIO WEB AUDIO API (Sintetizador Sci-Fi)
+// =================================================================
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+/**
+ * Gerenciador de Áudio (SoundSystem / AudioManager)
+ * Responsável por gerar efeitos sonoros procedurais e sirenes moduladas via Web Audio API.
+ */
+
+function playSound(type) {
+    if (!audioCtx) return;
+    try {
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        let now = audioCtx.currentTime;
+
+        if (type === 'shoot') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(880, now);
+            osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+        } else if (type === 'jump') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(420, now + 0.15);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'gravity') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(650, now + 0.25);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+            osc.start(now);
+            osc.stop(now + 0.25);
+        } else if (type === 'hit') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(160, now);
+            osc.frequency.linearRampToValueAtTime(40, now + 0.14);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.14);
+            osc.start(now);
+            osc.stop(now + 0.14);
+        } else if (type === 'powerup') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(320, now);
+            osc.frequency.setValueAtTime(480, now + 0.08);
+            osc.frequency.setValueAtTime(720, now + 0.16);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'portal') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.4);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } else if (type === 'dialogue') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(540, now);
+            osc.frequency.setValueAtTime(720, now + 0.04);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
+            osc.start(now);
+            osc.stop(now + 0.09);
+        } else if (type === 'explosion') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(120, now);
+            osc.frequency.linearRampToValueAtTime(20, now + 0.5);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+            osc.start(now);
+            osc.stop(now + 0.5);
+        }
+    } catch(e) {}
+}
+
+// Variáveis de Controle da Sirene Contínua com Modulação LFO
+let sirenOsc = null;
+let sirenMod = null;
+let sirenGain = null;
+
+
+/**
+ * Sistema de Sirene (SirenSystem)
+ * Responsável por ligar, modular (efeito LFO) e desligar o som contínuo de alarme via Web Audio API.
+ */
+
+function startSiren() {
+    if (!audioCtx) return;
+    if (sirenOsc) return;
+    try {
+        let now = audioCtx.currentTime;
+        sirenOsc = audioCtx.createOscillator();
+        sirenMod = audioCtx.createOscillator();
+        let modGain = audioCtx.createGain();
+        sirenGain = audioCtx.createGain();
+
+        // Frequência base de 680Hz oscilando ±250Hz a 1.5Hz (efeito sci-fi de sirene de emergência)
+        sirenOsc.type = 'sawtooth';
+        sirenOsc.frequency.setValueAtTime(680, now);
+
+        sirenMod.type = 'sine';
+        sirenMod.frequency.setValueAtTime(1.5, now);
+        modGain.gain.setValueAtTime(250, now);
+
+        sirenMod.connect(modGain);
+        modGain.connect(sirenOsc.frequency);
+
+        sirenGain.gain.setValueAtTime(0.01, now);
+        sirenGain.gain.linearRampToValueAtTime(0.09, now + 0.15);
+
+        sirenOsc.connect(sirenGain);
+        sirenGain.connect(audioCtx.destination);
+
+        sirenMod.start(now);
+        sirenOsc.start(now);
+    } catch(e) {}
+}
+
+function stopSiren() {
+    if (sirenGain && audioCtx) {
+        try {
+            sirenGain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        } catch(e) {}
+    }
+    setTimeout(() => {
+        try {
+            if (sirenMod) { sirenMod.stop(); sirenMod.disconnect(); }
+            if (sirenOsc) { sirenOsc.stop(); sirenOsc.disconnect(); }
+        } catch(e) {}
+        sirenOsc = null;
+        sirenMod = null;
+        sirenGain = null;
+    }, 120);
+}
+
+// =================================================================
+// 2. SISTEMA DE ENTRADA E ESTADO GLOBAL
+// =================================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let gameState = 'MENU';
+let currentStage = 0;
+let hubUnlocked = false;
+let globalTime = 0;
+
+let keys = {};
+let spaceKeyJustPressed = false;
+
+window.addEventListener('keydown', e => { 
+    if (e.code === 'Space' && !keys['Space']) {
+        spaceKeyJustPressed = true;
+    }
+    keys[e.code] = true; 
+    if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyZ'].includes(e.code)) {
+        e.preventDefault(); 
+    }
+});
+window.addEventListener('keyup', e => { 
+    keys[e.code] = false; 
+    if (e.code === 'Space') {
+        spaceKeyJustPressed = false;
+    }
+});
+window.addEventListener('blur', () => { 
+    keys = {}; 
+    spaceKeyJustPressed = false;
+});
+
+// Partículas visuais
+let particles = [];
+function addParticle(x, y, vx, vy, color, size, life, type = 'dot') {
+    particles.push({x, y, vx, vy, color, size, life, maxLife: life, type});
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * PlayerSystem & GameState (Jogador Rey Jones e Variáveis Globais)
+ * -----------------------------------------------------------------------------
+ */
+
+// Objeto do Jogador: Rey Jones
+let player = {
+    x: 100,
+    y: 330,
+    w: 28,
+    h: 48,
+    vx: 0,
+    vy: 0,
+    speed: 4.6,
+    jumpForce: -11.2,
+    grounded: false,
+    hp: 100,
+    maxHp: 100,
+    facing: 1,
+    gravityMode: 1,
+    swimMode: false,
+    shootTimer: 0,
+    canToggleGrav: true,
+    invulnTimer: 0,
+    
+    reset() {
+        this.x = 100;
+        this.y = 320;
+        this.vx = 0;
+        this.vy = 0;
+        this.hp = this.maxHp;
+        this.gravityMode = 1;
+        this.swimMode = false;
+        this.canToggleGrav = true;
+        this.invulnTimer = 0;
+    },
+
+    shoot() {
+        if (this.shootTimer > 0) return;
+        this.shootTimer = 14;
+        playSound('shoot');
+
+        let bx = this.facing > 0 ? this.x + this.w + 6 : this.x - 16;
+        let by = this.y + 19;
+        bullets.push({
+            x: bx,
+            y: by,
+            vx: this.facing * 12,
+            vy: 0,
+            w: 12,
+            h: 5,
+            fromPlayer: true
+        });
+
+        for (let i = 0; i < 4; i++) {
+            addParticle(bx, by + 2, this.facing * (2 + Math.random() * 3), (Math.random() - 0.5) * 2, '#38bdf8', 3, 0.2);
+        }
+    }
+};
+
+// Arrays Globais de Entidades e Elementos do Mundo
+let bullets = [];
+let enemies = [];
+let platforms = [];
+let cameras = [];
+let powerups = [];
+let doors = [];
+let scientists = [];
+let npcHelena = null;
+let radioStation = null;
+let boss = null;
+let electricHazards = [];
+let worldWidth = 1600;
+let cameraX = 0;
+
+// Sistema de Alarme de Segurança e Furtividade (Detecção por Câmeras)
+let alarmActive = false;
+let alarmTimer = 0;         // Duração de 15 segundos
+let alarmCooldown = 0;      // Período de carência após alarme
+let isPlayerInCover = false;
+function checkPlayerCover() {
+    let px = player.x + player.w / 2;
+    let py = player.y;
+
+    for (let p of platforms) {
+        if (p.type === 'platform') {
+            // Rey está horizontalmente abaixo da plataforma
+            let inX = (px >= p.x - 2 && px <= p.x + p.w + 2);
+            // Rey está verticalmente abaixo da plataforma
+            let underY = (py >= p.y + p.h - 8);
+            if (inX && underY) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+
+function lineIntersectsPlatform(x1, y1, x2, y2, p) {
+    if (x2 >= p.x - 4 && x2 <= p.x + p.w + 4 && y2 >= p.y + p.h - 6 && y1 < p.y) {
+        return true;
+    }
+    if (y1 < p.y && y2 > p.y) {
+        let t = (p.y - y1) / (y2 - y1);
+        let hitX = x1 + t * (x2 - x1);
+        if (hitX >= p.x && hitX <= p.x + p.w) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function triggerAlarm(sourceCam) {
+    if (alarmActive || alarmCooldown > 0) return;
+    alarmActive = true;
+    alarmTimer = 15.0; // Duração exata de 15 segundos
+    startSiren();
+
+    // Spawnam exatamente 2 a 3 drones de reforço ("mas vão só aparece dois ou três")
+    let droneCount = 3;
+    for (let i = 0; i < droneCount; i++) {
+        let offset = (i === 0) ? -110 : (i === 1) ? 110 : 0;
+        let spawnX = Math.max(40, Math.min(worldWidth - 60, (sourceCam ? sourceCam.x : player.x) + offset));
+        enemies.push({
+            type: 'alertDrone',
+            isAlarmDrone: true,
+            x: spawnX,
+            y: 110 + i * 22,
+            w: 30,
+            h: 24,
+            vx: (i === 0 ? 1.5 : -1.5),
+            vy: 0,
+            hp: 2,
+            maxHp: 2,
+            fleeing: false,
+            phase: i * 1.5
+        });
+    }
+
+    for (let i = 0; i < 16; i++) {
+        addParticle(player.x + player.w/2, player.y + player.h/2, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, '#ef4444', 4, 0.4);
+    }
+}
+
+function endAlarm() {
+    alarmActive = false;
+    alarmTimer = 0;
+    alarmCooldown = 3.5; // Carência para o jogador se reposicionar
+    stopSiren();
+
+    // Drones sobreviventes de alarme recuam e fogem pelo teto
+    enemies.forEach(en => {
+        if (en.type === 'alertDrone' && en.isAlarmDrone) {
+            en.fleeing = true;
+        }
+    });
+}
+
+// =================================================================
+// 3. SISTEMA DE CUTSCENES E DIÁLOGOS SEQUENCIAIS (AVANÇO POR [ESPAÇO])
+// =================================================================
+let dialogueQueue = [];
+let currentDialogue = null;
+let dialogueActive = false;
+let onDialogueComplete = null;
+
+function startDialogueSequence(sequence, onComplete = null) {
+    dialogueQueue = [...sequence];
+    onDialogueComplete = onComplete;
+    dialogueActive = true;
+    advanceDialogue();
+}
+
+function advanceDialogue() {
+    if (dialogueQueue.length > 0) {
+        currentDialogue = dialogueQueue.shift();
+        playSound('dialogue');
+
+        const box = document.getElementById('dialogue-box');
+        document.getElementById('dialogue-speaker').innerText = currentDialogue.speaker;
+        document.getElementById('dialogue-text').innerText = currentDialogue.text;
+
+        let icon = '⚡';
+        if (currentDialogue.speaker.includes('Rey')) icon = '🔫';
+        else if (currentDialogue.speaker.includes('Helena')) icon = '🔬';
+        else if (currentDialogue.speaker.includes('Newton')) icon = '🤖';
+        else if (currentDialogue.speaker.includes('Graham')) icon = '⚡';
+        else if (currentDialogue.speaker.includes('Próton')) icon = '⚛';
+        else if (currentDialogue.speaker.includes('Mar')) icon = '🌊';
+        else if (currentDialogue.speaker.includes('Kraskov')) icon = '☣';
+        document.getElementById('dialogue-avatar').innerText = icon;
+
+        let promptText = dialogueQueue.length > 0 
+            ? 'Pressione <strong>[ESPAÇO]</strong> para continuar ▶'
+            : 'Pressione <strong>[ESPAÇO]</strong> para encerrar ✖';
+        document.getElementById('dialogue-prompt').innerHTML = promptText;
+
+        box.style.display = 'block';
+    } else {
+        closeDialogue();
+    }
+}
+
+function closeDialogue() {
+    dialogueActive = false;
+    currentDialogue = null;
+    document.getElementById('dialogue-box').style.display = 'none';
+    if (onDialogueComplete) {
+        let cb = onDialogueComplete;
+        onDialogueComplete = null;
+        cb();
+    }
+}
+
+function updateDialogueInput() {
+    if (dialogueActive) {
+        if (spaceKeyJustPressed || keys['KeyE'] || keys['Enter']) {
+            spaceKeyJustPressed = false;
+            keys['KeyE'] = false;
+            keys['Enter'] = false;
+            advanceDialogue();
+        }
+    }
+}
+
+// =================================================================
+// 4. FLUXO DE FASES E MISSÕES
+// =================================================================
+function startGame() {
+    initAudio();
+    document.getElementById('menu-screen').style.display = 'none';
+    document.getElementById('ui-overlay').style.display = 'flex';
+    loadStage(1);
+}
+
+// ESCONDERIJO DOS SOBREVIVENTES COM TODOS OS CIENTISTAS E PORTAS
+function goToHub() {
+    stopSiren();
+    alarmActive = false;
+    alarmTimer = 0;
+    alarmCooldown = 0;
+    gameState = 'HUB';
+    currentStage = 0;
+    hubUnlocked = true;
+    player.reset();
+    worldWidth = 1900;
+    cameraX = 0;
+    bullets = [];
+    npcHelena = null;
+    radioStation = null;
+    boss = null;
+    electricHazards = [];
+    cameras = [];
+    enemies = [];
+    powerups = [];
+    
+    document.getElementById('ui-location').innerText = 'ESCONDERIJO DOS SOBREVIVENTES';
+    document.getElementById('ui-objective').innerText = 'Fale com os cientistas [E] e entre nas portas dos setores';
+    document.getElementById('ui-special-badge').style.display = 'none';
+
+    platforms = [
+        {x: 0, y: 420, w: 1900, h: 60, type: 'floor'},
+        {x: 0, y: 0, w: 1900, h: 40, type: 'ceiling'}
+    ];
+
+    // Portas que levam às fases correspondentes
+   
+/**
+ * -----------------------------------------------------------------------------
+ * StageManager & LevelLoader (Gerenciador de Fases e Carregamento de Cenários)
+ * -----------------------------------------------------------------------------
+ */
+
+function loadStage(stageNum) {
+    stopSiren();
+    alarmActive = false;
+    alarmTimer = 0;
+    alarmCooldown = 0;
+
+    currentStage = stageNum;
+    gameState = 'STAGE_' + stageNum;
+    player.reset();
+    bullets = [];
+    enemies = [];
+    powerups = [];
+    doors = [];
+    scientists = [];
+    npcHelena = null;
+    radioStation = null;
+    boss = null;
+    particles = [];
+
+    const badge = document.getElementById('ui-special-badge');
+    badge.style.display = 'none';
+    badge.style.color = ''; // Reseta a cor padrão do badge
+
+    if (stageNum === 1) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 1: ENTRADA DO COMPLEXO';
+        document.getElementById('ui-objective').innerText = 'Infiltre os corredores e ative o terminal de rádio';
+        
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor'},
+            {x: 350, y: 310, w: 230, h: 24, type: 'platform'},
+            {x: 680, y: 250, w: 230, h: 24, type: 'platform'},
+            {x: 1060, y: 310, w: 240, h: 24, type: 'platform'},
+            {x: 1480, y: 250, w: 230, h: 24, type: 'platform'},
+            {x: 1900, y: 320, w: 320, h: 24, type: 'platform'}
+        ];
+
+        cameras = [
+            {x: 480, y: 130, baseAngle: 0.1, range: 300, phase: 0, detected: false},
+            {x: 1200, y: 130, baseAngle: -0.1, range: 300, phase: 1.8, detected: false},
+            {x: 1750, y: 130, baseAngle: 0.1, range: 300, phase: 3.2, detected: false}
+        ];
+
+        enemies.push({type: 'gdi01', x: 620, y: 380, w: 32, h: 32, vx: 1.2, hp: 3, maxHp: 3, patrolMin: 480, patrolMax: 920});
+        enemies.push({type: 'mosquito', x: 920, y: 180, w: 24, h: 24, vx: 1.4, hp: 2, maxHp: 2, patrolMin: 780, patrolMax: 1180});
+        enemies.push({type: 'gdi01', x: 1400, y: 380, w: 32, h: 32, vx: -1.3, hp: 3, maxHp: 3, patrolMin: 1180, patrolMax: 1650});
+        
+        powerups.push({x: 1180, y: 260, w: 24, h: 24, type: 'heal', collected: false});
+
+        radioStation = {
+            x: 2160,
+            y: 265,
+            w: 48,
+            h: 65,
+            activated: false
+        };
+
+        // Cutscene inicial da Fase 1 (Avança com [Espaço])
+        startDialogueSequence([
+            {speaker: "Rey Jones", text: "Infiltração iniciada. As câmeras de segurança do Protocolo Krol estão ativas varrendo os corredores."},
+            {speaker: "Rádio Tático", text: "Atenção Rey: fique embaixo das plataformas para se camuflar das câmeras! Se for visto a céu aberto, o alarme tocará e 3 drones de perseguição virão atrás de você."}
+        ]);
+
+    } else if (stageNum === 2) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 2: GRID DE TRANSIÇÃO';
+        document.getElementById('ui-objective').innerText = 'Atravesse as esteiras motorizadas e resgate a Dra. Helena';
+
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor', conveyor: 1.6},
+            {x: 440, y: 330, w: 220, h: 22, type: 'platform'},
+            {x: 880, y: 250, w: 230, h: 22, type: 'platform', conveyor: -1.4},
+            {x: 1380, y: 320, w: 230, h: 22, type: 'platform'}
+        ];
+
+        cameras = [
+            {x: 720, y: 130, baseAngle: 0.1, range: 300, phase: 0.5, detected: false},
+            {x: 1520, y: 130, baseAngle: -0.1, range: 300, phase: 2.2, detected: false}
+        ];
+        
+        enemies.push({type: 'quadrant', x: 620, y: 375, w: 36, h: 36, vx: 2, hp: 4, maxHp: 4, patrolMin: 500, patrolMax: 920});
+        enemies.push({type: 'gdi01', x: 1220, y: 380, w: 32, h: 32, vx: 1.6, hp: 3, maxHp: 3, patrolMin: 1000, patrolMax: 1420});
+        
+        powerups.push({x: 980, y: 200, w: 24, h: 24, type: 'heal', collected: false});
+
+        // Dra. Helena no final da Fase 2
+        npcHelena = {
+            x: 2180,
+            y: 365,
+            w: 30,
+            h: 55,
+            interacted: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Rey Jones", text: "As esteiras motorizadas aceleram tudo aqui. Preciso resgatar a Dra. Helena no final do corredor!"}
+        ]);
+
+    } else if (stageNum === 3) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 3: SINGULARIDADE ZERO (Dr. Vector Próton)';
+        document.getElementById('ui-objective').innerText = 'Alterne a gravidade com [G] e sobrecarregue o Reator';
+
+        badge.style.display = 'flex';
+        badge.innerText = 'GRAVIDADE [G] ATIVA';
+
+        player.gravityMode = -1;
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor'},
+            {x: 0, y: 0, w: 2400, h: 50, type: 'ceiling'},
+            {x: 480, y: 220, w: 220, h: 24, type: 'platform', antiGrav: true},
+            {x: 1100, y: 260, w: 240, h: 24, type: 'platform', antiGrav: true}
+        ];
+
+        cameras = [{x: 820, y: 140, range: 140, angle: 0.4, detected: false}];
+        enemies.push({type: 'arachnid', x: 620, y: 385, w: 36, h: 28, vx: 2, hp: 4, maxHp: 4, patrolMin: 420, patrolMax: 840});
+        powerups.push({x: 580, y: 170, w: 24, h: 24, type: 'heal', collected: false});
+
+        boss = {
+            name: "REATOR HÍBRIDO PROTON-ZERO",
+            type: 'reactor',
+            x: 1980,
+            y: 80,
+            w: 130,
+            h: 330,
+            hp: 60,
+            maxHp: 60,
+            vx: 0,
+            defeated: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Dr. Vector Próton", text: "Rey! Você entrou no epicentro da Singularidade Zero!"},
+            {speaker: "Dr. Vector Próton", text: "Aperte a tecla [G] para inverter sua gravidade e caminhar pelo teto. Destrua o Reator Híbrido!"}
+        ]);
+
+    } else if (stageNum === 4) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 4: ABISMO AZUL (Dr. Mar)';
+        document.getElementById('ui-objective').innerText = 'Nade pelas correntes e destrua o Tubarão Megabruto';
+
+        badge.style.display = 'flex';
+        badge.innerText = 'PROPULSÃO AQUÁTICA [W,S,A,D]';
+
+        player.swimMode = true;
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor'},
+            {x: 0, y: 0, w: 2400, h: 45, type: 'ceiling'},
+            {x: 600, y: 280, w: 180, h: 24, type: 'platform'},
+            {x: 1200, y: 200, w: 200, h: 24, type: 'platform'}
+        ];
+
+        cameras = [{x: 740, y: 150, range: 140, angle: 0, detected: false}];
+        enemies.push({type: 'crab', x: 620, y: 388, w: 38, h: 26, vx: 1.2, hp: 4, maxHp: 4, patrolMin: 420, patrolMax: 920});
+        powerups.push({x: 1020, y: 180, w: 24, h: 24, type: 'heal', collected: false});
+
+        boss = {
+            name: "CYBER TUBARÃO MEGABRUTO",
+            type: 'shark',
+            x: 1950,
+            y: 250,
+            w: 140,
+            h: 75,
+            hp: 65,
+            maxHp: 65,
+            vx: 3.2,
+            targetY: 250,
+            defeated: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Dr. Mar", text: "Rey, você está na câmara de refrigeração subaquática!"},
+            {speaker: "Dr. Mar", text: "Nade livremente usando as setas ou W,A,S,D. Cuidado com o predador mecânico nos recifes industriais!"}
+        ]);
+
+    } else if (stageNum === 5) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 5: NÚCLEO TOX-CORROSIVO (Dr. Ian Kraskov)';
+        document.getElementById('ui-objective').innerText = 'Cuidado com o ácido no chão e aniquile o Colosso Atômico!';
+
+        badge.style.display = 'flex';
+        badge.innerText = 'RADIAÇÃO TÓXICA CRÍTICA';
+        badge.style.color = '#4ade80';
+
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor', toxic: true},
+            {x: 320, y: 320, w: 200, h: 24, type: 'platform'},
+            {x: 700, y: 250, w: 220, h: 24, type: 'platform'},
+            {x: 1100, y: 320, w: 220, h: 24, type: 'platform'},
+            {x: 1500, y: 240, w: 240, h: 24, type: 'platform'}
+        ];
+
+
+        
+        cameras = [{x: 780, y: 140, range: 130, angle: 0.3, detected: false}];
+        enemies.push({type: 'purifier', x: 740, y: 200, w: 38, h: 46, vx: 1.1, hp: 5, maxHp: 5, patrolMin: 700, patrolMax: 910});
+        powerups.push({x: 420, y: 270, w: 24, h: 24, type: 'heal', collected: false});
+
+        boss = {
+            name: "COLOSSO ATÔMICO KRASKOV",
+            type: 'colossus',
+            x: 1980,
+            y: 270,
+            w: 110,
+            h: 150,
+            hp: 75,
+            maxHp: 75,
+            vx: 1.4,
+            defeated: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Dr. Ian Kraskov", text: "Alerta máximo! O chão desta câmara é puro ácido corrosivo!"},
+            {speaker: "Dr. Ian Kraskov", text: "Use as plataformas elevadas e destrua o Colosso Atômico para encerrar o Protocolo Krol!"}
+        ]);
+
+    } else if (stageNum === 6) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 6: REDE TERMOSSOLAR (Dr. Arlo Smith)';
+        document.getElementById('ui-objective').innerText = 'Supere os refletores de calor e neutralize o Solar-Titan!';
+
+        badge.style.display = 'flex';
+        badge.innerText = 'CALOR EXTREMO ATIVO';
+        badge.style.color = '#f59e0b';
+
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor', thermal: true},
+            {x: 350, y: 300, w: 220, h: 24, type: 'platform'},
+            {x: 780, y: 220, w: 240, h: 24, type: 'platform'},
+            {x: 1250, y: 300, w: 220, h: 24, type: 'platform'},
+            {x: 1650, y: 220, w: 240, h: 24, type: 'platform'}
+        ];
+
+        cameras = [
+            {x: 600, y: 130, baseAngle: 0.2, range: 280, phase: 1.0, detected: false},
+            {x: 1450, y: 130, baseAngle: -0.2, range: 280, phase: 2.5, detected: false}
+        ];
+
+        enemies.push({type: 'solar-drone', x: 900, y: 160, w: 32, h: 32, vx: 1.8, hp: 4, maxHp: 4, patrolMin: 700, patrolMax: 1100});
+        powerups.push({x: 880, y: 180, w: 24, h: 24, type: 'heal', collected: false});
+
+        boss = {
+            name: "SOLAR-TITAN DE ARLO",
+            type: 'solar-titan',
+            x: 1980,
+            y: 220,
+            w: 120,
+            h: 180,
+            hp: 80,
+            maxHp: 80,
+            vx: 1.5,
+            defeated: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Dr. Arlo Smith", text: "Rey, meu querido... você chegou na ala termossolar. O ambiente está bem aquecido, então mantenha-se em movimento."},
+            {speaker: "Dr. Arlo Smith", text: "Neutralize o Solar-Titan que foi corrompido pelos comandos do Krol. Vamos vencer juntos essa batalha!"}
+        ]);
+    }
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * FinalBossDoorSystem & Progression (Porta Lacrada do Chefão Krol e Dra. Helena)
+ * -----------------------------------------------------------------------------
+ */
+
+function initHubData() {
+    // Portas dos setores incluindo a Fase Final (Krol) lacrada até zerar as anteriores
+    doors = [
+        {x: 240, y: 310, w: 60, h: 110, stage: 1, parts: [1, 2, 3, 4], name: "Setor 1", sub: "Dr. Richard Newton (Entrada)"},
+        {x: 560, y: 310, w: 60, h: 110, stage: 2, parts: [1, 2, 3, 4], name: "Setor 2", sub: "Dr. John Graham (Grid de Sobrecarga)"},
+        {x: 880, y: 310, w: 60, h: 110, stage: 3, parts: [1, 2, 3, 4], name: "Setor 3", sub: "Dr. Vector Próton (Singularidade)"},
+        {x: 1200, y: 310, w: 60, h: 110, stage: 4, parts: [1, 2, 3, 4], name: "Setor 4", sub: "Dr. Mar (Abismo Azul)"},
+        {x: 1520, y: 310, w: 60, h: 110, stage: 5, parts: [1, 2, 3, 4], name: "Setor 5", sub: "Dr. Ian Kraskov (Tox-Corrosivo)"},
+        {x: 1840, y: 310, w: 60, h: 110, stage: 6, parts: [1, 2, 3, 4], name: "Setor 6", sub: "Dr. Arlo Smith (Rede Termossolar)"},
+        {
+            x: 2160, 
+            y: 310, 
+            w: 60, 
+            h: 110, 
+            stage: 7, 
+            parts: [1, 2, 3, 4], 
+            name: "Setor Final", 
+            sub: "IA Krol (Núcleo Central)", 
+            locked: !areAllPreviousStagesCompleted() // Lacrada até completar os setores 1 a 6
+        }
+    ];
+
+    // Cientistas posicionados em seus respectivos setores
+    scientists = [
+        {
+            type: 'newton',
+            name: 'Dr. Richard Newton',
+            title: 'Especialista em Robótica',
+            x: 180,
+            y: 365,
+            w: 30,
+            h: 55,
+            doorStage: 1,
+            dialogue: [
+                {speaker: "Dr. Richard Newton", text: "Rey! Sou o Dr. Richard Newton. Fui o criador dos autômatos do Setor 1 antes do Protocolo Krol corromper a rede central."},
+                {speaker: "Dr. Richard Newton", text: "A porta ao meu lado leva aos corredores da Entrada (Partes 1 a 4). Destrua os drones de patrulha!"}
+            ]
+        },
+        {
+
+
+            type: 'graham',
+            name: 'Dr. John Graham',
+            title: 'Engenheiro de Automação e Alta Voltagem',
+            x: 500,
+            y: 365,
+            w: 30,
+            h: 55,
+            doorStage: 2,
+            dialogue: [
+                {speaker: "Dr. John Graham", text: "Rey Jones! Eu sou o Dr. John Graham, responsável pelo Setor 02: Grid de Sobrecarga (Partes 1 a 4)."},
+                {speaker: "Dr. John Graham", text: "Krol sequestrou minhas esteiras de montagem e reprogramou os autômatos GDI-02, Spark-Rollers e Torres-Vortex!"}
+            ]
+        },
+        {
+            type: 'proton',
+            name: 'Dr. Vector Próton',
+            title: 'Físico Quântico',
+            x: 820,
+            y: 365,
+            w: 30,
+            h: 55,
+            doorStage: 3,
+            dialogue: [
+                {speaker: "Dr. Vector Próton", text: "Atenção, Rey! Instalei o conversor gravitacional no seu exoesqueleto. No Setor 3 (Partes 1 a 4), aperte [G] para alternar gravidade!"}
+            ]
+        },
+        {
+            type: 'mar',
+            name: 'Dr. Mar',
+            title: 'Bióloga Marinha',
+            x: 1140,
+            y: 365,
+            w: 30,
+            h: 55,
+            doorStage: 4,
+            dialogue: [
+                {speaker: "Dr. Mar", text: "Olá, Rey! O Setor 4 (Abismo Azul - Partes 1 a 4) foi totalmente inundado para resfriamento de emergência. Cuidado com o predador mecânico!"}
+            ]
+        },
+        {
+            type: 'kraskov',
+            name: 'Dr. Ian Kraskov',
+            title: 'Toxicologista',
+            x: 1460,
+            y: 365,
+            w: 30,
+            h: 55,
+            doorStage: 5,
+            dialogue: [
+                {speaker: "Dr. Ian Kraskov", text: "Rey Jones, o Setor 5 é o Núcleo Tox-Corrosivo (Partes 1 a 4). O piso é pura radioatividade ácida. Mova-se pelas plataformas!"}
+            ]
+        },
+        {
+            type: 'arlo',
+            name: 'Dr. Arlo Smith',
+            title: 'Engenheiro Termossolar & Suporte Humanitário',
+            x: 1780,
+            y: 365,
+            w: 30,
+            h: 55,
+            doorStage: 6,
+            visual: {
+                hairColor: '#e0e0e0',
+                coatColor: '#385e72',
+                accentColor: '#f59e0b',
+                glasses: true
+            },
+            dialogue: [
+                {speaker: "Dr. Arlo Smith", text: "Ah, Rey... Respire fundo, você está seguro entre nós. Cuide do Setor 6 (Partes 1 a 4) com calma e coragem!"}
+            ]
+        }
+    ];
+
+    // Dra. Helena Walker só aparece na porta da fase final (Setor 7) quando todas as outras missões forem concluídas
+    if (areAllPreviousStagesCompleted()) {
+        scientists.push({
+            type: 'helena',
+            name: 'Dra. Helena Walker',
+            title: 'Cientista-Chefe',
+            x: 2100,
+            y: 365,
+            w: 30,
+            h: 55,
+            doorStage: 7,
+            dialogue: [
+                {speaker: "Dra. Helena Walker", text: "Rey... Você completou todos os setores e desativou as defesas secundárias do Krol! Estou orgulhosa de você."},
+                {speaker: "Dra. Helena Walker", text: "A porta principal do Núcleo Central está destrancada. Entre nas Partes 1 a 4 da fase final e destrua a IA Krol de uma vez por todas!"},
+                {speaker: "Rey Jones", text: "Pode deixar, Dra. Helena. Chegou a hora de encerrar esse protocolo!"}
+            ]
+        });
+    }
+
+    // Cutscene de boas-vindas do Esconderijo
+    startDialogueSequence([
+        {speaker: "Dra. Helena Walker", text: "Bem-vindo ao Esconderijo dos Sobreviventes, Rey Jones!"},
+        {speaker: "Dra. Helena Walker", text: "Conclua todas as missões dos 6 setores para destravar o Setor Final e enfrentar a IA Krol!"}
+    ]);
+}
+
+// Função auxiliar para verificar se os setores 1 a 6 foram concluídos
+function areAllPreviousStagesCompleted() {
+    // Exemplo de verificação com base nas flags de progresso salvas no jogo
+    return window.completedStages && window.completedStages.includes(1) && 
+           window.completedStages.includes(2) && window.completedStages.includes(3) && 
+           window.completedStages.includes(4) && window.completedStages.includes(5) && 
+           window.completedStages.includes(6);
+}
+
+function handleRestartOrReturn() {
+    stopSiren();
+    alarmActive = false;
+    alarmTimer = 0;
+    alarmCooldown = 0;
+    document.getElementById('screen-message').style.display = 'none';
+    if (gameState === 'WIN') {
+        goToHub();
+    } else {
+        if (!hubUnlocked && currentStage <= 2) {
+            loadStage(currentStage);
+        } else {
+            goToHub();
+        }
+    }
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', handleRestartOrReturn);
+
+    // Cutscene de boas-vindas do Esconderijo (Avança com [Espaço])
+    startDialogueSequence([
+        {speaker: "Dra. Helena", text: "Bem-vindo ao Esconderijo dos Sobreviventes, Rey Jones!"},
+        {speaker: "Dra. Helena", text: "Cada um dos nossos cientistas está posicionado ao lado da porta do seu setor."},
+        {speaker: "Dra. Helena", text: "Fale com eles usando a tecla [E] para receber as instruções e entre nas portas para deter o Protocolo Krol!"}
+    ]);
+}
+
+function loadStage(stageNum) {
+    stopSiren();
+    alarmActive = false;
+    alarmTimer = 0;
+    alarmCooldown = 0;
+
+    currentStage = stageNum;
+    gameState = 'STAGE_' + stageNum;
+    player.reset();
+    bullets = [];
+    enemies = [];
+    powerups = [];
+    doors = [];
+    scientists = [];
+    npcHelena = null;
+    radioStation = null;
+    boss = null;
+    particles = [];
+
+    const badge = document.getElementById('ui-special-badge');
+    badge.style.display = 'none';
+
+    if (stageNum === 1) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 1: ENTRADA DO COMPLEXO';
+        document.getElementById('ui-objective').innerText = 'Infiltre os corredores e ative o terminal de rádio';
+        
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor'},
+            {x: 350, y: 310, w: 230, h: 24, type: 'platform'},
+            {x: 680, y: 250, w: 230, h: 24, type: 'platform'},
+            {x: 1060, y: 310, w: 240, h: 24, type: 'platform'},
+            {x: 1480, y: 250, w: 230, h: 24, type: 'platform'},
+            {x: 1900, y: 320, w: 320, h: 24, type: 'platform'}
+        ];
+
+        cameras = [
+            {x: 480, y: 130, baseAngle: 0.1, range: 300, phase: 0, detected: false},
+            {x: 1200, y: 130, baseAngle: -0.1, range: 300, phase: 1.8, detected: false},
+            {x: 1750, y: 130, baseAngle: 0.1, range: 300, phase: 3.2, detected: false}
+        ];
+
+        enemies.push({type: 'gdi01', x: 620, y: 380, w: 32, h: 32, vx: 1.2, hp: 3, maxHp: 3, patrolMin: 480, patrolMax: 920});
+        enemies.push({type: 'mosquito', x: 920, y: 180, w: 24, h: 24, vx: 1.4, hp: 2, maxHp: 2, patrolMin: 780, patrolMax: 1180});
+        enemies.push({type: 'gdi01', x: 1400, y: 380, w: 32, h: 32, vx: -1.3, hp: 3, maxHp: 3, patrolMin: 1180, patrolMax: 1650});
+        
+        powerups.push({x: 1180, y: 260, w: 24, h: 24, type: 'heal', collected: false});
+
+        radioStation = {
+            x: 2160,
+            y: 265,
+            w: 48,
+            h: 65,
+            activated: false
+        };
+
+        // Cutscene inicial da Fase 1 (Avança com [Espaço])
+        startDialogueSequence([
+            {speaker: "Rey Jones", text: "Infiltração iniciada. As câmeras de segurança do Protocolo Krol estão ativas varrendo os corredores."},
+            {speaker: "Rádio Tático", text: "Atenção Rey: fique embaixo das plataformas para se camuflar das câmeras! Se for visto a céu aberto, o alarme tocará e 3 drones de perseguição virão atrás de você."}
+        ]);
+
+    } else if (stageNum === 2) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 2: GRID DE TRANSIÇÃO';
+        document.getElementById('ui-objective').innerText = 'Atravesse as esteiras motorizadas e resgate a Dra. Helena';
+
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor', conveyor: 1.6},
+            {x: 440, y: 330, w: 220, h: 22, type: 'platform'},
+            {x: 880, y: 250, w: 230, h: 22, type: 'platform', conveyor: -1.4},
+            {x: 1380, y: 320, w: 230, h: 22, type: 'platform'}
+        ];
+
+        cameras = [
+            {x: 720, y: 130, baseAngle: 0.1, range: 300, phase: 0.5, detected: false},
+            {x: 1520, y: 130, baseAngle: -0.1, range: 300, phase: 2.2, detected: false}
+        ];
+        
+        enemies.push({type: 'quadrant', x: 620, y: 375, w: 36, h: 36, vx: 2, hp: 4, maxHp: 4, patrolMin: 500, patrolMax: 920});
+        enemies.push({type: 'gdi01', x: 1220, y: 380, w: 32, h: 32, vx: 1.6, hp: 3, maxHp: 3, patrolMin: 1000, patrolMax: 1420});
+        
+        powerups.push({x: 980, y: 200, w: 24, h: 24, type: 'heal', collected: false});
+
+        // Dra. Helena no final da Fase 2
+        npcHelena = {
+            x: 2180,
+            y: 365,
+            w: 30,
+            h: 55,
+            interacted: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Rey Jones", text: "As esteiras motorizadas aceleram tudo aqui. Preciso resgatar a Dra. Helena no final do corredor!"}
+        ]);
+
+    } else if (stageNum === 3) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 3: SINGULARIDADE ZERO (Dr. Vector Próton)';
+        document.getElementById('ui-objective').innerText = 'Alterne a gravidade com [G] e sobrecarregue o Reator';
+
+        badge.style.display = 'flex';
+        badge.innerText = 'GRAVIDADE [G] ATIVA';
+
+        player.gravityMode = -1;
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor'},
+            {x: 0, y: 0, w: 2400, h: 50, type: 'ceiling'},
+            {x: 480, y: 220, w: 220, h: 24, type: 'platform', antiGrav: true},
+            {x: 1100, y: 260, w: 240, h: 24, type: 'platform', antiGrav: true}
+        ];
+
+        cameras = [{x: 820, y: 140, range: 140, angle: 0.4, detected: false}];
+        enemies.push({type: 'arachnid', x: 620, y: 385, w: 36, h: 28, vx: 2, hp: 4, maxHp: 4, patrolMin: 420, patrolMax: 840});
+        powerups.push({x: 580, y: 170, w: 24, h: 24, type: 'heal', collected: false});
+
+        boss = {
+            name: "REATOR HÍBRIDO PROTON-ZERO",
+            type: 'reactor',
+            x: 1980,
+            y: 80,
+            w: 130,
+            h: 330,
+            hp: 60,
+            maxHp: 60,
+            vx: 0,
+            defeated: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Dr. Vector Próton", text: "Rey! Você entrou no epicentro da Singularidade Zero!"},
+            {speaker: "Dr. Vector Próton", text: "Aperte a tecla [G] para inverter sua gravidade e caminhar pelo teto. Destrua o Reator Híbrido!"}
+        ]);
+
+    } else if (stageNum === 4) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 4: ABISMO AZUL (Dr. Mar)';
+        document.getElementById('ui-objective').innerText = 'Nade pelas correntes e destrua o Tubarão Megabruto';
+
+        badge.style.display = 'flex';
+        badge.innerText = 'PROPULSÃO AQUÁTICA [W,S,A,D]';
+
+        player.swimMode = true;
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor'},
+            {x: 0, y: 0, w: 2400, h: 45, type: 'ceiling'},
+            {x: 600, y: 280, w: 180, h: 24, type: 'platform'},
+            {x: 1200, y: 200, w: 200, h: 24, type: 'platform'}
+        ];
+
+        cameras = [{x: 740, y: 150, range: 140, angle: 0, detected: false}];
+        enemies.push({type: 'crab', x: 620, y: 388, w: 38, h: 26, vx: 1.2, hp: 4, maxHp: 4, patrolMin: 420, patrolMax: 920});
+        powerups.push({x: 1020, y: 180, w: 24, h: 24, type: 'heal', collected: false});
+
+        boss = {
+            name: "CYBER TUBARÃO MEGABRUTO",
+            type: 'shark',
+            x: 1950,
+            y: 250,
+            w: 140,
+            h: 75,
+            hp: 65,
+            maxHp: 65,
+            vx: 3.2,
+            targetY: 250,
+            defeated: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Dr. Mar", text: "Rey, você está na câmara de refrigeração subaquática!"},
+            {speaker: "Dr. Mar", text: "Nade livremente usando as setas ou W,A,S,D. Cuidado com o predador mecânico nos recifes industriais!"}
+        ]);
+
+    } else if (stageNum === 5) {
+        worldWidth = 2400;
+        document.getElementById('ui-location').innerText = 'FASE 5: NÚCLEO TOX-CORROSIVO (Dr. Ian Kraskov)';
+        document.getElementById('ui-objective').innerText = 'Cuidado com o ácido no chão e aniquile o Colosso Atômico!';
+
+        badge.style.display = 'flex';
+        badge.innerText = 'RADIAÇÃO TÓXICA CRÍTICA';
+        badge.style.color = '#4ade80';
+
+        platforms = [
+            {x: 0, y: 420, w: 2400, h: 60, type: 'floor', toxic: true},
+            {x: 320, y: 320, w: 200, h: 24, type: 'platform'},
+            {x: 700, y: 250, w: 220, h: 24, type: 'platform'},
+            {x: 1100, y: 320, w: 220, h: 24, type: 'platform'},
+            {x: 1500, y: 240, w: 240, h: 24, type: 'platform'}
+        ];
+
+        cameras = [{x: 780, y: 140, range: 130, angle: 0.3, detected: false}];
+        enemies.push({type: 'purifier', x: 740, y: 200, w: 38, h: 46, vx: 1.1, hp: 5, maxHp: 5, patrolMin: 700, patrolMax: 910});
+        powerups.push({x: 420, y: 270, w: 24, h: 24, type: 'heal', collected: false});
+
+        boss = {
+            name: "COLOSSO ATÔMICO KRASKOV",
+            type: 'colossus',
+            x: 1980,
+            y: 270,
+            w: 110,
+            h: 150,
+            hp: 75,
+            maxHp: 75,
+            vx: 1.4,
+            defeated: false
+        };
+
+        startDialogueSequence([
+            {speaker: "Dr. Ian Kraskov", text: "Alerta máximo! O chão desta câmara é puro ácido corrosivo!"},
+            {speaker: "Dr. Ian Kraskov", text: "Use as plataformas elevadas e destrua o Colosso Atômico para encerrar o Protocolo Krol!"}
+        ]);
+    }
+}
+
+function handleRestartOrReturn() {
+    stopSiren();
+    alarmActive = false;
+    alarmTimer = 0;
+    alarmCooldown = 0;
+    document.getElementById('screen-message').style.display = 'none';
+    if (gameState === 'WIN') {
+        goToHub();
+    } else {
+        if (!hubUnlocked && currentStage <= 2) {
+            loadStage(currentStage);
+        } else {
+            goToHub();
+        }
+    }
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', handleRestartOrReturn);
+
+// =================================================================
+// 5. ATUALIZAÇÃO DA FÍSICA E LÓGICA DO JOGO
+// =================================================================
+let lastTime = performance.now();
+
+function gameLoop(timestamp) {
+    let dt = (timestamp - lastTime) / 1000;
+    if (dt > 0.1) dt = 0.1;
+    lastTime = timestamp;
+    globalTime += dt;
+
+    if (gameState !== 'MENU' && gameState !== 'GAMEOVER' && gameState !== 'WIN') {
+        update(dt);
+    }
+    if (gameState !== 'MENU') {
+        render();
+    }
+    spaceKeyJustPressed = false;
+    requestAnimationFrame(gameLoop);
+}
+
+
+/**
+ * -----------------------------------------------------------------------------
+ * PlayerUpdateSystem (Loop de Atualização, Movimentação, Pulo e Gravidade)
+ * -----------------------------------------------------------------------------
+ */
+
+function update(dt) {
+    // Processamento de Cutscenes / Diálogos controlados por [Espaço]
+    if (dialogueActive) {
+        updateDialogueInput();
+        return; // Pausa a movimentação e combate enquanto a cutscene estiver ativa!
+    }
+
+    if (player.shootTimer > 0) player.shootTimer--;
+    if (player.invulnTimer > 0) player.invulnTimer -= dt;
+
+    // Movimentação do Jogador
+    let moveDir = 0;
+    if (keys['ArrowLeft'] || keys['KeyA']) moveDir = -1;
+    if (keys['ArrowRight'] || keys['KeyD']) moveDir = 1;
+
+    if (moveDir !== 0) {
+        player.facing = moveDir;
+    }
+
+    if (keys['KeyZ']) {
+        player.shoot();
+    }
+
+    // Modo Natação (Fase 4)
+    if (currentStage === 4) {
+        player.vx = moveDir * player.speed;
+        let vUp = (keys['ArrowUp'] || keys['Space'] || keys['KeyW']) ? -player.speed : 0;
+        let vDown = (keys['ArrowDown'] || keys['KeyS']) ? player.speed : 0;
+        player.vy = vUp + vDown;
+        player.x += player.vx;
+        player.y += player.vy;
+
+        if (Math.random() < 0.3 && (player.vx !== 0 || player.vy !== 0)) {
+            addParticle(player.x + player.w/2, player.y + player.h/2, (Math.random() - 0.5) * 2, -1 - Math.random() * 2, 'rgba(186, 230, 253, 0.7)', 3, 1.2, 'bubble');
+        }
+    } else {
+        let grav = (currentStage === 3) ? (0.5 * player.gravityMode) : 0.62;
+        player.vy += grav;
+        player.vx = moveDir * player.speed;
+
+        // Pulo com [Espaço] ou [W] ou [Seta Cima]
+        if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.grounded) {
+            player.vy = player.jumpForce * (currentStage === 3 ? player.gravityMode : 1);
+            player.grounded = false;
+            playSound('jump');
+
+            for (let i = 0; i < 5; i++) {
+                let py = (currentStage === 3 && player.gravityMode === -1) ? player.y : player.y + player.h;
+                addParticle(player.x + 8 + i * 3, py, (Math.random() - 0.5) * 2, -player.gravityMode * (2 + Math.random() * 2), '#38bdf8', 3, 0.3);
+            }
+        }
+
+        // Inversão de Gravidade na Fase 3
+        if (currentStage === 3 && keys['KeyG']) {
+            if (player.canToggleGrav) {
+                player.gravityMode *= -1;
+                player.canToggleGrav = false;
+                playSound('gravity');
+                for (let i = 0; i < 15; i++) {
+                    addParticle(player.x + player.w/2, player.y + player.h/2, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, '#c084fc', 4, 0.4);
+                }
+                setTimeout(() => { player.canToggleGrav = true; }, 350);
+            }
+        }
+
+        player.x += player.vx;
+        player.y += player.vy;
+
+        // Colisão com Plataformas
+        player.grounded = false;
+        platforms.forEach(p => {
+            if (p.conveyor && player.x < p.x + p.w && player.x + player.w > p.x &&
+                player.y + player.h >= p.y && player.y + player.h <= p.y + 15 && player.vy >= 0) {
+                player.x += p.conveyor;
+            }
+
+            if (player.x < p.x + p.w && player.x + player.w > p.x &&
+                player.y < p.y + p.h && player.y + player.h > p.y) {
+                if (currentStage === 3 && player.gravityMode === -1) {
+                    if (player.vy < 0) {
+                        player.y = p.y + p.h;
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                } else {
+                    if (player.vy > 0 && player.y + player.h - player.vy <= p.y + 12) {
+                        player.y = p.y - player.h;
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                }
+            }
+        });
+    }
+
+
+    
+// ==========================================
+    // ATUALIZAÇÃO DA CÂMERA DO CENÁRIO
+    // ==========================================
+    let canvasWidth = 800; // Defina aqui a largura do seu canvas (ex: 800 ou o valor padrão)
+    if (typeof canvas !== 'undefined' && canvas.width) {
+        canvasWidth = canvas.width;
+    }
+    
+    // Faz a câmera seguir o jogador horizontalmente mantendo-o próximo ao centro
+    cameraX = player.x - canvasWidth / 2 + player.w / 2;
+    
+    // Trava a câmera nos limites do mundo (de 0 até worldWidth - largura da tela)
+    if (cameraX < 0) cameraX = 0;
+    if (cameraX > worldWidth - canvasWidth) {
+        cameraX = worldWidth - canvasWidth;
+    }
+
+// ==========================================
+    // ATUALIZAÇÃO DOS TIROS (JOGADOR E INIMIGOS)
+    // ==========================================
+    bullets.forEach((b, index) => {
+        b.x += b.vx;
+        b.y += (b.vy || 0);
+
+        // Remove tiros que saem dos limites do mundo
+        if (b.x < 0 || b.x > worldWidth || b.y < 0 || b.y > 600) {
+            bullets.splice(index, 1);
+            return;
+        }
+
+        // Se o tiro for do jogador, verifica colisão com inimigos
+        if (b.fromPlayer) {
+            enemies.forEach((enemy, eIndex) => {
+                if (enemy.hp > 0 && b.x < enemy.x + enemy.w && b.x + b.w > enemy.x &&
+                    b.y < enemy.y + enemy.h && b.y + b.h > enemy.y) {
+                    enemy.hp--;
+                    bullets.splice(index, 1);
+                    playSound('hit');
+                    for(let i=0; i<4; i++) {
+                        addParticle(enemy.x + enemy.w/2, enemy.y + enemy.h/2, (Math.random()-0.5)*4, (Math.random()-0.5)*4, '#f87171', 3, 0.3);
+                    }
+                }
+            });
+        } else {
+            // Tiro inimigo atingindo o jogador
+            if (player.invulnTimer <= 0 && b.x < player.x + player.w && b.x + b.w > player.x &&
+                b.y < player.y + player.h && b.y + b.h > player.y) {
+                player.hp -= 15;
+                player.invulnTimer = 1.0; // 1 segundo de invulnerabilidade
+                bullets.splice(index, 1);
+                playSound('hit');
+                if (player.hp <= 0) {
+                    triggerGameOver();
+                }
+            }
+        }
+    });
+
+
+// ==========================================
+    // COLISÃO DO JOGADOR COM INIMIGOS
+    // ==========================================
+    enemies.forEach(enemy => {
+        if (enemy.hp > 0 && player.invulnTimer <= 0 &&
+            player.x < enemy.x + enemy.w && player.x + player.w > enemy.x &&
+            player.y < enemy.y + enemy.h && player.y + player.h > enemy.y) {
+            
+            player.hp -= 10;
+            player.invulnTimer = 1.2; // Tempo de invulnerabilidade após o dano
+            playSound('hit');
+            
+            // Pequeno recuo (knockback)
+            player.vx = (player.x < enemy.x) ? -6 : 6;
+            player.vy = -5;
+
+            if (player.hp <= 0) {
+                triggerGameOver();
+            }
+        }
+    });
+
+    // Listener global para capturar a tecla [E]
+window.addEventListener('keydown', (e) => {
+    // Registra teclas pressionadas no seu objeto 'keys' existente
+    if (keys) keys[e.code] = true;
+
+    // Se a tecla [E] for pressionada
+    if (e.code === 'KeyE') {
+        // 1. Verificar se está perto do Terminal de Rádio (Fase 1)
+        if (radioStation && !radioStation.activated) {
+            let dist = Math.hypot((player.x + player.w/2) - (radioStation.x + radioStation.w/2), (player.y + player.h/2) - (radioStation.y + radioStation.h/2));
+            if (dist < 80) {
+                radioStation.activated = true;
+                playSound('powerup');
+                startDialogueSequence([
+                    {speaker: "Rádio Tático", text: "Transmissão estabelecida com sucesso! Os códigos de segurança do Krol foram interceptados."},
+                    {speaker: "Rey Jones", text: "Perfeito. Caminho livre para avançar para o próximo setor!"}
+                ]);
+            }
+        }
+
+        // 2. Verificar proximidade com cientistas ou portas no Hub/Fases
+        if (typeof scientists !== 'undefined' && scientists.length > 0) {
+            scientists.forEach(sci => {
+                let distSci = Math.hypot((player.x + player.w/2) - (sci.x + sci.w/2), (player.y + player.h/2) - (sci.y + sci.h/2));
+                if (distSci < 70 && sci.dialogue) {
+                    playSound('dialogue');
+                    startDialogueSequence(sci.dialogue);
+                }
+            });
+        }
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (keys) keys[e.code] = false;
+});
+
+// ==========================================
+    // ATUALIZAÇÃO DAS CÂMERAS DE SEGURANÇA
+    // ==========================================
+    let time = Date.now() * 0.002; // Fator de velocidade do movimento
+    cameras.forEach((cam, index) => {
+        // Se a câmera tiver uma fase ou baseAngle, faz ela oscilar de um lado para o outro (efeito radar)
+        let oscillationRange = 0.6; // Amplitude do movimento (em radianos)
+        let speed = 1.2;            // Velocidade de rotação
+        let phaseOffset = cam.phase || (index * 1.5);
+        
+        // Atualiza o ângulo atual da câmera com base no tempo
+        cam.angle = (cam.baseAngle || 0) + Math.sin(time * speed + phaseOffset) * oscillationRange;
+    });
+
+}
+
+    // Interação com o Terminal de Rádio (Final da Fase 1)
+    if (currentStage === 1 && radioStation && !radioStation.activated) {
+        if (Math.abs(player.x - radioStation.x) < 45 && Math.abs(player.y - radioStation.y) < 60) {
+            if (keys['KeyE']) {
+                radioStation.activated = true;
+                playSound('portal');
+                startDialogueSequence([
+                    {speaker: "Rádio de Rey", text: "Sintonizando transmissão prioritária de emergência..."},
+                    {speaker: "Dra. Helena (Transmissão)", text: "Aqui é a Dra. Helena da equipe de pesquisa! O Protocolo Krol corrompeu o sistema central!"},
+                    {speaker: "Dra. Helena (Transmissão)", text: "Estou encurralada no final do Grid de Transição do Setor 2... Por favor, venha rápido!"},
+                    {speaker: "Rey Jones", text: "Mensagem captada, Dra. Helena. Estou a caminho!"}
+                ], () => {
+                    loadStage(2);
+                });
+            }
+        }
+    }
+
+    // ENCONTRO COM A DRA. HELENA (FINAL DA FASE 2) -> ENTRA AUTOMATICAMENTE NO ESCONDERIJO
+    if (currentStage === 2 && npcHelena && !npcHelena.interacted) {
+        // Quando o jogador se aproxima da Dra. Helena, já inicia a cutscene e entra no Esconderijo
+        if (Math.abs(player.x - npcHelena.x) < 40 && Math.abs(player.y - npcHelena.y) < 50) {
+            npcHelena.interacted = true;
+            playSound('portal');
+            startDialogueSequence([
+                {speaker: "Dra. Helena", text: "Rey Jones! Você conseguiu me encontrar a tempo!"},
+                {speaker: "Rey Jones", text: "Doutora, você está segura agora. Para onde vamos?"},
+                {speaker: "Dra. Helena", text: "Vou ativar a frequência de teleporte para o nosso Esconderijo secreto. Segure-se firme!"}
+            ], () => {
+                goToHub(); // Entra diretamente no esconderijo dos sobreviventes!
+            });
+        }
+    }
+
+    // INTERAÇÕES NO ESCONDERIJO (HUB)
+    if (gameState === 'HUB') {
+        // Conversar com cientistas
+        scientists.forEach(sci => {
+            if (Math.abs(player.x - sci.x) < 45 && Math.abs(player.y - sci.y) < 50) {
+                if (keys['KeyE']) {
+                    keys['KeyE'] = false;
+                    startDialogueSequence(sci.dialogue);
+                }
+            }
+        });
+
+        // Entrar nas portas correspondentes a cada fase
+        doors.forEach(d => {
+            if (Math.abs(player.x - (d.x + d.w / 2)) < 35 && Math.abs(player.y - (d.y + d.h / 2)) < 60) {
+                if (keys['KeyE']) {
+                    keys['KeyE'] = false;
+                    playSound('portal');
+                    loadStage(d.stage);
+                }
+            }
+        });
+    }
+
+    // Limites de Mundo
+    if (player.x < 0) player.x = 0;
+    if (player.x > worldWidth - player.w) player.x = worldWidth - player.w;
+    if (player.y > canvas.height + 80 || player.y < -120) {
+        player.hp = 0;
+    }
+
+    // Piso tóxico na Fase 5
+    if (currentStage === 5 && player.y >= 370) {
+        player.hp -= 0.35;
+        if (Math.random() < 0.4) {
+            addParticle(player.x + Math.random() * player.w, player.y + player.h, (Math.random() - 0.5) * 2, -2 - Math.random() * 2, '#4ade80', 4, 0.4);
+        }
+    }
+
+    // Projéteis
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        b.x += b.vx;
+
+        if (b.fromPlayer) {
+            if (boss && boss.hp > 0 && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) {
+                boss.hp -= 1;
+                playSound('hit');
+                for (let k = 0; k < 6; k++) {
+                    addParticle(b.x, b.y, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, '#f87171', 3, 0.3);
+                }
+                bullets.splice(i, 1);
+                continue;
+            }
+
+            let hitEnemy = false;
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                let en = enemies[j];
+                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                    en.hp -= 1;
+                    playSound('hit');
+                    hitEnemy = true;
+                    for (let k = 0; k < 6; k++) {
+                        addParticle(b.x, b.y, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, '#fbbf24', 3, 0.25);
+                    }
+                    if (en.hp <= 0) {
+                        for (let k = 0; k < 12; k++) {
+                            addParticle(en.x + en.w/2, en.y + en.h/2, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, '#ef4444', 4, 0.5);
+                        }
+                        enemies.splice(j, 1);
+                    }
+                    break;
+                }
+            }
+            if (hitEnemy) {
+                bullets.splice(i, 1);
+                continue;
+            }
+        }
+
+        if (b.x < cameraX - 50 || b.x > cameraX + canvas.width + 50) {
+            bullets.splice(i, 1);
+        }
+    }
+
+    // Power-ups
+    powerups.forEach(pw => {
+        if (!pw.collected && player.x < pw.x + pw.w && player.x + player.w > pw.x &&
+            player.y < pw.y + pw.h && player.y + player.h > pw.y) {
+            pw.collected = true;
+            playSound('powerup');
+            player.hp = Math.min(player.maxHp, player.hp + 35);
+            for (let i = 0; i < 12; i++) {
+                addParticle(pw.x + 12, pw.y + 12, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, '#22c55e', 3, 0.4);
+            }
+        }
+    });
+
+    // Atualização de Furtividade e Alarme de Segurança (15 segundos)
+    isPlayerInCover = checkPlayerCover();
+
+    if (alarmActive) {
+        alarmTimer -= dt;
+        if (alarmTimer <= 0) {
+            endAlarm();
+        }
+    }
+    if (alarmCooldown > 0) {
+        alarmCooldown -= dt;
+    }
+
+    // Câmeras de Vigilância: Varrem os corredores e buscam Rey
+    // Caso Rey fique embaixo de uma plataforma, não é encontrado!
+    // Se ficar exposto no feixe de visão, o alarme soa e drones vão atrás dele
+    cameras.forEach(cam => {
+        let sweep = Math.sin(globalTime * 1.4 + (cam.phase || 0)) * 0.45;
+        cam.currentAngle = (cam.baseAngle || 0) + sweep;
+
+        let px = player.x + player.w / 2;
+        let py = player.y + player.h / 2;
+        let dx = px - cam.x;
+        let dy = py - cam.y;
+        let dist = Math.hypot(dx, dy);
+
+        let rayAngle = Math.atan2(dx, dy);
+        let angleDiff = Math.abs(rayAngle - cam.currentAngle);
+
+        let inCone = (angleDiff < 0.30 && dist < (cam.range || 300) && dy > 0);
+
+        // Oclusão por plataformas: se Rey estiver embaixo de uma plataforma, está a salvo!
+        let occluded = isPlayerInCover;
+        if (!occluded) {
+            for (let p of platforms) {
+                if (p.type === 'platform') {
+                    if (lineIntersectsPlatform(cam.x, cam.y, px, py, p)) {
+                        occluded = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (inCone && !occluded) {
+            cam.detected = true;
+            if (!alarmActive && alarmCooldown <= 0) {
+                triggerAlarm(cam);
+            }
+        } else {
+            cam.detected = alarmActive;
+        }
+    });
+
+    // Inimigos e Drones de Alarme (Perseguição ativa e fuga após 15s)
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let en = enemies[i];
+
+        if (en.type === 'alertDrone') {
+            if (en.fleeing) {
+                en.vy = -6;
+                en.y += en.vy;
+                if (en.y < -60) {
+                    enemies.splice(i, 1);
+                    continue;
+                }
+            } else {
+                // Perseguição ativa ao Rey Jones
+                let targetX = player.x + player.w / 2 - en.w / 2;
+                let targetY = player.y + player.h / 2 - 16;
+                let dx = targetX - en.x;
+                let dy = targetY - en.y;
+                let dist = Math.hypot(dx, dy);
+
+                if (dist > 6) {
+                    en.vx += (dx / dist) * 0.22;
+                    en.vy += (dy / dist) * 0.16;
+                }
+                en.vx *= 0.92;
+                en.vy *= 0.92;
+
+                en.x += en.vx;
+                en.y += en.vy;
+
+                en.y += Math.sin(globalTime * 10 + (en.phase || 0)) * 0.6;
+                if (Math.random() < 0.35) {
+                    addParticle(en.x + en.w / 2, en.y + en.h - 2, (Math.random() - 0.5) * 2, 2 + Math.random() * 2, '#ef4444', 3, 0.22);
+                }
+            }
+        } else {
+            if (en.vx) {
+                en.x += en.vx;
+                if (en.patrolMin && (en.x < en.patrolMin || en.x > en.patrolMax)) {
+                    en.vx *= -1;
+                }
+            }
+            if (en.type === 'mosquito') {
+                en.y += Math.sin(globalTime * 6) * 1.5;
+            }
+        }
+
+        // Dano por colisão com Rey Jones
+        if (player.x < en.x + en.w && player.x + player.w > en.x &&
+            player.y < en.y + en.h && player.y + player.h > en.y) {
+            if (player.invulnTimer <= 0) {
+                player.hp -= (en.type === 'alertDrone' ? 10 : 15);
+                player.invulnTimer = 0.8;
+                playSound('hit');
+                player.vx = (player.x < en.x ? -3 : 3);
+                for (let k = 0; k < 8; k++) {
+                    addParticle(player.x + player.w/2, player.y + player.h/2, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, '#ef4444', 3, 0.3);
+                }
+            }
+        }
+    }
+
+    // Chefe de Fase
+    if (boss) {
+        if (boss.hp > 0) {
+            if (boss.type === 'shark') {
+                boss.x += boss.vx;
+                if (boss.x < 1650 || boss.x > 2250) boss.vx *= -1;
+                boss.y += Math.sin(globalTime * 3) * 1.5;
+                if (Math.random() < 0.4) {
+                    let bx = boss.vx > 0 ? boss.x : boss.x + boss.w;
+                    addParticle(bx, boss.y + boss.h/2, -boss.vx, (Math.random() - 0.5) * 2, 'rgba(186, 230, 253, 0.8)', 4, 1.0, 'bubble');
+                }
+            } else if (boss.type === 'colossus') {
+                boss.x += boss.vx;
+                if (boss.x < 1700 || boss.x > 2250) boss.vx *= -1;
+            }
+
+            if (player.x < boss.x + boss.w && player.x + player.w > boss.x &&
+                player.y < boss.y + boss.h && player.y + player.h > boss.y) {
+                if (player.invulnTimer <= 0) {
+                    player.hp -= 20;
+                    player.invulnTimer = 1.0;
+                    playSound('hit');
+                    player.vx = (player.x < boss.x ? -4 : 4);
+                }
+            }
+        } else if (!boss.defeated) {
+            boss.defeated = true;
+            playSound('explosion');
+            for (let i = 0; i < 40; i++) {
+                addParticle(boss.x + Math.random() * boss.w, boss.y + Math.random() * boss.h, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, '#f59e0b', 5, 0.8);
+            }
+            startDialogueSequence([
+                {speaker: "VITÓRIA NO SETOR!", text: `${boss.name} foi totalmente destruído!`},
+                {speaker: "Rey Jones", text: "Área limpa. Retornando ao Esconderijo dos Sobreviventes."}
+            ], () => {
+                if (currentStage < 5) {
+                    goToHub();
+                } else {
+                    gameState = 'WIN';
+                    document.getElementById('msg-title').innerText = 'MISSÃO CUMPRIDA!';
+                    document.getElementById('msg-sub').innerText = 'O Protocolo Krol foi destruído e todos os setores foram salvos!';
+                    document.getElementById('btn-restart').innerText = 'RETORNAR AO ESCONDERIJO';
+                    document.getElementById('screen-message').style.display = 'block';
+                }
+            });
+        }
+    }
+
+    // Partículas
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= dt;
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+
+    // Fim de Jogo
+    if (player.hp <= 0) {
+        stopSiren();
+        alarmActive = false;
+        alarmTimer = 0;
+        gameState = 'GAMEOVER';
+        document.getElementById('msg-title').innerText = 'REY FOI DERROTADO';
+        document.getElementById('msg-sub').innerText = 'O Protocolo Krol assumiu o controle da estação...';
+        document.getElementById('btn-restart').innerText = (!hubUnlocked && currentStage <= 2) ? 'REINICIAR SETOR' : 'RETORNAR AO ESCONDERIJO';
+        document.getElementById('screen-message').style.display = 'block';
+    }
+{
+    // Câmera Suave
+    let targetCamX = player.x - canvas.width / 3;
+    cameraX += (targetCamX - cameraX) * 0.15;
+    if (cameraX < 0) cameraX = 0;
+    if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+
+    // Atualização da UI
+    let hpPercent = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100));
+    document.getElementById('hp-fill').style.width = hpPercent + '%';
+    document.getElementById('ui-hp-val').innerText = `${Math.max(0, Math.floor(player.hp))} / ${player.maxHp}`;
+}
+
+// =================================================================
+// 6. MOTOR DE RENDERIZAÇÃO GRÁFICA (SPRITES & CENÁRIO APRIMORADOS)
+// =================================================================
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    renderParallaxBackground();
+
+    ctx.save();
+    ctx.translate(-cameraX, 0);
+
+    if (gameState === 'HUB') {
+        renderHubScenery();
+    } else {
+        renderStageScenery();
+    }
+
+    cameras.forEach(cam => {
+        renderCamera(cam);
+    });
+
+    powerups.forEach(pw => {
+        if (!pw.collected) renderMedkit(pw.x, pw.y);
+    });
+
+    enemies.forEach(en => {
+        renderEnemy(en);
+    });
+
+    if (boss && boss.hp > 0) {
+        renderBoss(boss);
+    }
+
+    renderBullets();
+    renderParticles();
+    renderReyJones(player);
+
+    // Efeitos visuais do alarme: luzes vermelhas piscando e alerta de reforços
+    if (alarmActive) {
+        renderAlarmEffects();
+    }
+
+    ctx.restore();
+}
+
+function renderParallaxBackground() {
+    let w = canvas.width;
+    let h = canvas.height;
+
+    let grad = ctx.createLinearGradient(0, 0, 0, h);
+    if (currentStage === 4) {
+        grad.addColorStop(0, '#041c32');
+        grad.addColorStop(0.5, '#04293a');
+        grad.addColorStop(1, '#064663');
+    } else if (currentStage === 5) {
+        grad.addColorStop(0, '#09150e');
+        grad.addColorStop(0.6, '#0f2415');
+        grad.addColorStop(1, '#1c1917');
+    } else if (currentStage === 3) {
+        grad.addColorStop(0, '#0f051d');
+        grad.addColorStop(0.5, '#1e1035');
+        grad.addColorStop(1, '#2e1065');
+    } else {
+        grad.addColorStop(0, '#070b14');
+        grad.addColorStop(0.6, '#0c1527');
+        grad.addColorStop(1, '#111c35');
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Silhuetas distantes
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+    let bgShift = -(cameraX * 0.15) % 300;
+    for (let x = bgShift - 300; x < w + 300; x += 180) {
+        ctx.fillRect(x, 100, 70, h - 100);
+        ctx.fillRect(x + 20, 60, 30, h - 60);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.fillRect(x + 32, 55, 6, 6);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+    }
+
+    // Vigas intermediárias
+    let midShift = -(cameraX * 0.4) % 400;
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.7)';
+    ctx.lineWidth = 4;
+    for (let x = midShift - 400; x < w + 400; x += 220) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 120, h);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+        ctx.fillRect(x, 80, 220, 14);
+        ctx.fillStyle = (currentStage === 5) ? 'rgba(74, 222, 128, 0.3)' : 'rgba(56, 189, 248, 0.25)';
+        ctx.fillRect(x, 84, 220, 4);
+    }
+
+    if (currentStage === 4) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.05)';
+        for (let i = 0; i < 5; i++) {
+            let lx = (i * 200 + Math.sin(globalTime + i) * 30 - cameraX * 0.2) % w;
+            ctx.beginPath();
+            ctx.moveTo(lx, 0);
+            ctx.lineTo(lx + 80, 0);
+            ctx.lineTo(lx + 160, h);
+            ctx.lineTo(lx + 40, h);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+// CENÁRIO DO ESCONDERIJO (HUB) COM PORTAS E CIENTISTAS MODELADOS
+function renderHubScenery() {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 420, worldWidth, 60);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(0, 420, worldWidth, 3);
+
+    // Portas dos Setores
+    doors.forEach(d => {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(d.x - 6, d.y - 8, d.w + 12, d.h + 8);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(d.x - 6, d.y - 8, d.w + 12, d.h + 8);
+
+        let pGrad = ctx.createLinearGradient(d.x, d.y, d.x + d.w, d.y + d.h);
+        pGrad.addColorStop(0, '#0284c7');
+        pGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = pGrad;
+        ctx.fillRect(d.x, d.y, d.w, d.h);
+
+        ctx.fillStyle = '#38bdf8';
+        for (let i = 0; i < 4; i++) {
+            ctx.fillRect(d.x + 8, d.y + 18 + i * 22, d.w - 16, 3);
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.name, d.x + d.w / 2, d.y - 20);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(d.sub, d.x + d.w / 2, d.y - 7);
+
+        // Indicador de entrada na porta
+        if (Math.abs(player.x - (d.x + d.w / 2)) < 35) {
+            renderInteractionPill(d.x + d.w / 2, d.y + d.h / 2, "[E] ENTRAR NA PORTA");
+        }
+    });
+
+    // Renderizar cada um dos cientistas do Esconderijo
+    scientists.forEach(sci => {
+        renderScientist(sci);
+    });
+
+    ctx.textAlign = 'left';
+}
+
+// DESENHO PERSONALIZADO DE CADA CIENTISTA
+function renderScientist(sci) {
+    let x = sci.x;
+    let y = sci.y;
+    let bob = Math.sin(globalTime * 3 + x) * 1.5;
+
+    ctx.save();
+
+    if (sci.type === 'helena') {
+        // Dra. Helena (Cientista-Chefe)
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(x + 4, y + 16 + bob, 22, 34);
+        ctx.fillStyle = '#0d9488';
+        ctx.fillRect(x + 10, y + 16 + bob, 10, 14);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(x + 6, y + 3 + bob, 18, 14);
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(x + 4, y - 2 + bob, 22, 7);
+        ctx.fillRect(x + 2, y + 3 + bob, 5, 12);
+        ctx.fillRect(x + 20, y + 3 + bob, 5, 8);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(x + 9, y + 6 + bob, 6, 4);
+        ctx.fillRect(x + 16, y + 6 + bob, 6, 4);
+        // Tablet holográfico
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(x - 4, y + 24 + bob, 10, 14);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.fillRect(x - 8, y + 12 + bob, 18, 10);
+
+    } else if (sci.type === 'newton') {
+        // Dr. Richard Newton (Robótica - Colete marrom e prancheta técnica)
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(x + 4, y + 16 + bob, 22, 34);
+        ctx.fillStyle = '#78350f'; // Colete utilitário marrom
+        ctx.fillRect(x + 6, y + 18 + bob, 18, 18);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(x + 6, y + 3 + bob, 18, 14);
+        ctx.fillStyle = '#475569'; // Cabelo grisalho
+        ctx.fillRect(x + 4, y - 2 + bob, 22, 6);
+        ctx.fillStyle = '#38bdf8'; // Óculos prateados
+        ctx.fillRect(x + 8, y + 6 + bob, 5, 4);
+        ctx.fillRect(x + 15, y + 6 + bob, 5, 4);
+        // Circuito/ferramenta na mão
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(x + 22, y + 26 + bob, 6, 8);
+
+    } else if (sci.type === 'graham') {
+        // Dr. John Graham (Energia - Jaqueta industrial laranja e visor de solda)
+        ctx.fillStyle = '#ea580c'; // Traje de alta voltagem laranja
+        ctx.fillRect(x + 4, y + 16 + bob, 22, 34);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(x + 8, y + 18 + bob, 14, 16);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(x + 6, y + 3 + bob, 18, 14);
+        ctx.fillStyle = '#1e293b'; // Cabelo escuro
+        ctx.fillRect(x + 4, y - 2 + bob, 22, 6);
+        ctx.fillStyle = '#facc15'; // Visor de soldador na testa
+        ctx.fillRect(x + 5, y - 5 + bob, 20, 5);
+        // Chave de fenda de energia
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(x + 22, y + 22 + bob, 4, 14);
+
+    } else if (sci.type === 'proton') {
+        // Dr. Vector Próton (Física Quântica - Traje roxo e monóculo cibernético)
+        ctx.fillStyle = '#581c87'; // Jaleco roxo quântico
+        ctx.fillRect(x + 4, y + 16 + bob, 22, 34);
+        ctx.fillStyle = '#a855f7';
+        ctx.fillRect(x + 10, y + 18 + bob, 10, 16);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(x + 6, y + 3 + bob, 18, 14);
+        ctx.fillStyle = '#0f172a'; // Cabelo preto
+        ctx.fillRect(x + 4, y - 2 + bob, 22, 6);
+        ctx.fillStyle = '#c084fc'; // Monóculo quântico pulsante
+        ctx.fillRect(x + 15, y + 5 + bob, 6, 6);
+        // Ampola de antimatéria
+        ctx.fillStyle = '#d8b4fe';
+        ctx.fillRect(x - 2, y + 26 + bob, 6, 10);
+
+    } else if (sci.type === 'mar') {
+        // Dr. Mar (Biólogo Marinho - Traje aquático azul e colar de mergulho)
+        ctx.fillStyle = '#0284c7'; // Traje aquático azul
+        ctx.fillRect(x + 4, y + 16 + bob, 22, 34);
+        ctx.fillStyle = '#0369a1';
+        ctx.fillRect(x + 8, y + 18 + bob, 14, 18);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(x + 6, y + 3 + bob, 18, 14);
+        ctx.fillStyle = '#92400e'; // Cabelo castanho
+        ctx.fillRect(x + 4, y - 2 + bob, 22, 6);
+        ctx.fillStyle = '#38bdf8'; // Máscara de mergulho no queixo
+        ctx.fillRect(x + 7, y + 12 + bob, 16, 5);
+        // Rastreador sonar na mão
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(x + 22, y + 25 + bob, 6, 8);
+
+    } else if (sci.type === 'kraskov') {
+        // Dr. Ian Kraskov (Toxicologista - Jaleco com faixas amarelas e respirador)
+        ctx.fillStyle = '#1c1917'; // Traje protetor escuro
+        ctx.fillRect(x + 4, y + 16 + bob, 22, 34);
+        ctx.fillStyle = '#eab308'; // Faixa de advertência biológica
+        ctx.fillRect(x + 6, y + 26 + bob, 18, 6);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(x + 6, y + 3 + bob, 18, 14);
+        ctx.fillStyle = '#334155'; // Cabelo escuro
+        ctx.fillRect(x + 4, y - 2 + bob, 22, 6);
+        ctx.fillStyle = '#22c55e'; // Respirador de filtro verde tóxico
+        ctx.fillRect(x + 8, y + 9 + bob, 14, 7);
+        // Frasco de amostra química
+        ctx.fillStyle = '#4ade80';
+        ctx.fillRect(x - 3, y + 24 + bob, 6, 12);
+    }
+
+    // Nome e Cargo do Cientista acima do sprite
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(sci.name, x + sci.w / 2, y - 18 + bob);
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '9px sans-serif';
+    ctx.fillText(sci.title, x + sci.w / 2, y - 7 + bob);
+
+    ctx.restore();
+
+    // Indicador de interação quando Rey estiver próximo do cientista
+    if (Math.abs(player.x - sci.x) < 45 && !dialogueActive) {
+        renderInteractionPill(sci.x + sci.w / 2, y - 32, `[E] FALAR COM ${sci.name.toUpperCase()}`);
+    }
+}
+
+function renderStageScenery() {
+    platforms.forEach(p => {
+        if (p.toxic) {
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(p.x, p.y, p.w, 6);
+            for (let x = p.x; x < p.x + p.w; x += 35) {
+                let wave = Math.sin(globalTime * 5 + x * 0.1) * 3;
+                ctx.fillStyle = '#4ade80';
+                ctx.fillRect(x, p.y - 2 + wave, 12, 4);
+            }
+        } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(p.x, p.y, p.w, 4);
+
+            ctx.fillStyle = (currentStage === 3) ? '#c084fc' : '#38bdf8';
+            ctx.fillRect(p.x, p.y + 4, p.w, 2);
+
+            ctx.fillStyle = '#0f172a';
+            for (let px = p.x + 20; px < p.x + p.w - 10; px += 40) {
+                ctx.fillRect(px, p.y + 8, 2, p.h - 10);
+            }
+
+            if (p.conveyor) {
+                let arrowShift = (globalTime * (p.conveyor > 0 ? 30 : -30)) % 25;
+                ctx.fillStyle = '#f59e0b';
+                ctx.font = '10px sans-serif';
+                for (let px = p.x + 10; px < p.x + p.w - 15; px += 25) {
+                    ctx.fillText(p.conveyor > 0 ? '▶' : '◀', px + arrowShift, p.y + 15);
+                }
+            }
+
+            if (p.antiGrav) {
+                ctx.fillStyle = '#a855f7';
+                for (let px = p.x + 15; px < p.x + p.w - 10; px += 35) {
+                    ctx.fillRect(px, p.y + p.h - 6, 12, 6);
+                }
+            }
+        }
+    });
+
+    if (currentStage === 1 && radioStation) {
+        renderRadioTerminal(radioStation);
+    }
+
+    if (currentStage === 2 && npcHelena) {
+        renderDraHelena(npcHelena);
+    }
+}
+
+function renderReyJones(p) {
+    ctx.save();
+    ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+
+    let scaleY = (currentStage === 3 && p.gravityMode === -1) ? -1 : 1;
+    ctx.scale(p.facing, scaleY);
+
+    if (p.invulnTimer > 0 && Math.floor(globalTime * 25) % 2 === 0) {
+        ctx.globalAlpha = 0.45;
+    }
+
+    let isMoving = Math.abs(p.vx) > 0.2;
+    let walkPhase = isMoving && p.grounded ? Math.sin(globalTime * 14) * 6 : 0;
+
+    // Propulsor nas costas
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-13, -12, 6, 18);
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(-14, 0, 3, 5);
+    if (!p.grounded || isMoving) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(-17 - Math.random() * 3, 1, 4, 3);
+    }
+
+    // Pernas e botas
+    let legBack = -walkPhase;
+    let legFront = walkPhase;
+    if (!p.grounded) {
+        legBack = -4;
+        legFront = 5;
+    }
+
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-8 + legBack, 8, 6, 11);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-9 + legBack, 19, 8, 5);
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(-7 + legBack, 22, 6, 2);
+
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(1 + legFront, 8, 6, 11);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0 + legFront, 19, 9, 5);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(2 + legFront, 22, 7, 2);
+
+    // Tronco e armadura peitoral
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-9, -12, 18, 20);
+
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(-7, -11, 15, 13);
+    ctx.fillStyle = '#2563eb';
+    ctx.fillRect(-6, -10, 13, 3);
+
+    // Reator no peito
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(-1, -7, 5, 5);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, -6, 3, 3);
+
+    // Cinto tático
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-9, 4, 18, 4);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(0, 5, 4, 3);
+
+    // Cabeça, cabelo e visor
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(-3, -15, 8, 4);
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(-5, -24, 14, 11);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-8, -26, 16, 5);
+    ctx.fillRect(-9, -24, 5, 10);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-7, -25, 8, 2);
+
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-7, -20, 3, 5);
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(-7, -19, 2, 2);
+
+    // Visor cibernético
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(1, -21, 9, 6);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(2, -20, 8, 4);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(6, -20, 3, 2);
+
+    ctx.fillStyle = '#fbcfe8';
+    ctx.fillRect(2, -15, 6, 2);
+
+    // Braços e Canhão
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-6, -10, 5, 9);
+
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(3, -9, 7, 6);
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(6, -7, 8, 5);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(7, -6, 5, 2);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(13, -8, 8, 6);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(14, -6, 6, 2);
+
+    if (p.shootTimer > 9) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(21, -11, 7, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(22, -9, 5, 8);
+    }
+
+    // Indicador tático de furtividade quando camuflado sob plataformas
+    if (isPlayerInCover && !alarmActive && (currentStage === 1 || currentStage === 2)) {
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.95)';
+        ctx.font = 'bold 9px "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🛡️ EM COBERTURA', 0, -p.h / 2 - 14);
+    }
+
+    ctx.restore();
+}
+
+function renderRadioTerminal(station) {
+    let x = station.x;
+    let y = station.y;
+
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x, y + 15, station.w, station.h - 15);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y + 15, station.w, station.h - 15);
+
+    ctx.fillStyle = '#052e16';
+    ctx.fillRect(x + 6, y + 22, station.w - 12, 22);
+    let sweep = (globalTime * 3) % (station.w - 16);
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(x + 8 + sweep, y + 24, 2, 18);
+
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(x + station.w / 2 - 2, y - 5, 4, 20);
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(x + station.w / 2, y - 5, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    let waveR = (globalTime * 25) % 20;
+    ctx.strokeStyle = `rgba(56, 189, 248, ${1 - waveR / 20})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + station.w / 2, y - 5, waveR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (Math.abs(player.x - x) < 60) {
+        renderInteractionPill(x + station.w / 2, y - 25, "[E] SINTONIZAR RÁDIO");
+    }
+}
+
+function renderDraHelena(helena) {
+    let x = helena.x;
+    let y = helena.y;
+    let bob = Math.sin(globalTime * 3) * 1.5;
+
+    ctx.save();
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(x + 4, y + 16 + bob, 22, 34);
+    ctx.fillStyle = '#0d9488';
+    ctx.fillRect(x + 10, y + 16 + bob, 10, 14);
+
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(x + 6, y + 3 + bob, 18, 14);
+
+    ctx.fillStyle = '#b45309';
+    ctx.fillRect(x + 4, y - 2 + bob, 22, 7);
+    ctx.fillRect(x + 2, y + 3 + bob, 5, 12);
+    ctx.fillRect(x + 20, y + 3 + bob, 5, 8);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(x + 9, y + 6 + bob, 6, 4);
+    ctx.fillRect(x + 16, y + 6 + bob, 6, 4);
+
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(x - 4, y + 24 + bob, 10, 14);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.fillRect(x - 8, y + 12 + bob, 18, 10);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(x - 6, y + 14 + bob, 14, 2);
+
+    ctx.restore();
+
+    if (Math.abs(player.x - x) < 60 && !helena.interacted) {
+        renderInteractionPill(x + helena.w / 2, y - 18, "[E] RESGATAR DRA. HELENA");
+    }
+}
+
+function renderInteractionPill(x, y, text) {
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    let textWidth = ctx.measureText(text).width;
+    let px = x - textWidth / 2 - 8;
+    let py = y - 10 + Math.sin(globalTime * 6) * 3;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(px, py, textWidth + 16, 20);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px, py, textWidth + 16, 20);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(text, px + 8, py + 14);
+    ctx.restore();
+}
+
+function renderCamera(cam) {
+    ctx.save();
+
+    // Suporte fixo no teto metálico
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(cam.x - 12, cam.y - 12, 24, 6);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(cam.x - 4, cam.y - 6, 8, 8);
+
+    // Câmera motorizada com rotação sincronizada à varredura
+    ctx.save();
+    ctx.translate(cam.x, cam.y + 4);
+    ctx.rotate(cam.currentAngle || 0);
+
+    // Chassi da câmera
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-10, -6, 20, 14);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-7, 8, 14, 5);
+
+    // LED de vigilância (Azul calmo / Vermelho pulsante se detectar Rey ou Alarme)
+    let isAlert = cam.detected || alarmActive;
+    ctx.fillStyle = isAlert ? '#ef4444' : '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(0, 10, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Feixe / Cone de luz projetado para baixo
+    let coneLen = cam.range || 290;
+    let halfSpread = Math.tan(0.30) * coneLen;
+
+    let coneGrad = ctx.createLinearGradient(0, 12, 0, coneLen);
+    if (isAlert) {
+        let pulse = (Math.sin(globalTime * 12) + 1) * 0.12;
+        coneGrad.addColorStop(0, `rgba(239, 68, 68, ${0.45 + pulse})`);
+        coneGrad.addColorStop(0.7, `rgba(239, 68, 68, ${0.22 + pulse})`);
+        coneGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    } else {
+        coneGrad.addColorStop(0, 'rgba(56, 189, 248, 0.32)');
+        coneGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.12)');
+        coneGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+    }
+
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 12);
+    ctx.lineTo(-halfSpread, coneLen);
+    ctx.lineTo(halfSpread, coneLen);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bordas laser de varredura
+    ctx.strokeStyle = isAlert ? 'rgba(239, 68, 68, 0.65)' : 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 12);
+    ctx.lineTo(-halfSpread, coneLen);
+    ctx.moveTo(0, 12);
+    ctx.lineTo(halfSpread, coneLen);
+    ctx.stroke();
+
+    ctx.restore();
+    ctx.restore();
+}
+
+function renderAlarmEffects() {
+    let flash = (Math.sin(globalTime * 9) + 1) * 0.5;
+    let redAlpha = 0.08 + flash * 0.16;
+
+    // Luzes vermelhas de emergência piscando em todo o setor
+    ctx.fillStyle = `rgba(239, 68, 68, ${redAlpha})`;
+    ctx.fillRect(cameraX, 0, canvas.width, canvas.height);
+
+    // Vinheta pulsante de alarme nas bordas da tela
+    let vigGrad = ctx.createRadialGradient(
+        cameraX + canvas.width / 2, canvas.height / 2, canvas.width * 0.25,
+        cameraX + canvas.width / 2, canvas.height / 2, canvas.width * 0.65
+    );
+    vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vigGrad.addColorStop(1, `rgba(239, 68, 68, ${0.25 + flash * 0.35})`);
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(cameraX, 0, canvas.width, canvas.height);
+
+    // Alerta no topo da interface
+    let timeLeft = Math.ceil(Math.max(0, alarmTimer));
+    let bx = cameraX + canvas.width / 2 - 145;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.fillRect(bx, 12, 290, 26);
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx, 12, 290, 26);
+
+    ctx.fillStyle = flash > 0.4 ? '#ef4444' : '#fca5a5';
+    ctx.font = 'bold 12px "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🚨 ALERTA: DRONES ATIVOS! (${timeLeft}s)`, cameraX + canvas.width / 2, 29);
+}
+
+function renderMedkit(x, y) {
+    let bob = Math.sin(globalTime * 4) * 4;
+    ctx.save();
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(x, y + bob, 24, 20);
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y + bob, 24, 20);
+
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(x + 9, y + 4 + bob, 6, 12);
+    ctx.fillRect(x + 5, y + 7 + bob, 14, 6);
+
+    ctx.restore();
+}
+
+function renderEnemy(en) {
+    ctx.save();
+
+    if (en.type === 'alertDrone') {
+        // Drone perseguidor de reforço (Olho vermelho e hélices de choque)
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(en.x + 4, en.y + 6, en.w - 8, en.h - 10);
+        
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(en.x - 5, en.y + 3, 9, 4);
+        ctx.fillRect(en.x + en.w - 4, en.y + 3, 9, 4);
+
+        let rotorOffset = Math.sin(globalTime * 35) * 6;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(en.x - 7, en.y + 3 - rotorOffset);
+        ctx.lineTo(en.x + 5, en.y + 3 + rotorOffset);
+        ctx.moveTo(en.x + en.w - 5, en.y + 3 - rotorOffset);
+        ctx.lineTo(en.x + en.w + 7, en.y + 3 + rotorOffset);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(en.x + en.w / 2, en.y + en.h / 2 + 1, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(en.x + en.w / 2 - 1, en.y + en.h / 2, 2, 2);
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(en.x + 6, en.y + en.h - 4, en.w - 12, 3);
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+        ctx.fillRect(en.x + en.w / 2 - 3, en.y + en.h - 1, 6, 4 + Math.random() * 4);
+
+    } else if (en.type === 'gdi01') {
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(en.x, en.y + 6, en.w, en.h - 10);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(en.x - 2, en.y + en.h - 6, en.w + 4, 6);
+        ctx.fillStyle = '#ef4444';
+        let eyeShift = Math.sin(globalTime * 8) * (en.w / 4);
+        ctx.fillRect(en.x + en.w / 2 - 4 + eyeShift, en.y + 11, 8, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(en.x + en.w / 2 - 2 + eyeShift, en.y + 13, 3, 3);
+
+    } else if (en.type === 'mosquito') {
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(en.x + 6, en.y + 6, en.w - 12, en.h - 10);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(en.x + en.w - 6, en.y + en.h / 2 - 2, 8, 4);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+        let wingH = Math.sin(globalTime * 30) * 10;
+        ctx.fillRect(en.x + 4, en.y - wingH, 12, wingH);
+
+    } else if (en.type === 'quadrant') {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(en.x, en.y, en.w, en.h);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(en.x, en.y, en.w, en.h);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(en.x - 4, en.y + 6, 6, 5);
+        ctx.fillRect(en.x - 4, en.y + en.h - 11, 6, 5);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(en.x + 10, en.y + 10, en.w - 20, en.h - 20);
+
+    } else if (en.type === 'arachnid') {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(en.x + 6, en.y + 4, en.w - 12, en.h - 10);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(en.x + 8, en.y + 8, 4, 4);
+        ctx.fillRect(en.x + 16, en.y + 8, 4, 4);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(en.x + 6, en.y + 10);
+        ctx.lineTo(en.x - 4, en.y + en.h);
+        ctx.moveTo(en.x + en.w - 6, en.y + 10);
+        ctx.lineTo(en.x + en.w + 4, en.y + en.h);
+        ctx.stroke();
+
+    } else if (en.type === 'crab') {
+        ctx.fillStyle = '#0369a1';
+        ctx.fillRect(en.x + 4, en.y + 6, en.w - 8, en.h - 8);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(en.x - 4, en.y + 2, 8, 10);
+        ctx.fillRect(en.x + en.w - 4, en.y + 2, 8, 10);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(en.x + 10, en.y + 2, 4, 4);
+        ctx.fillRect(en.x + en.w - 14, en.y + 2, 4, 4);
+
+    } else if (en.type === 'purifier') {
+        ctx.fillStyle = '#1c1917';
+        ctx.fillRect(en.x + 6, en.y + 10, en.w - 12, en.h - 12);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(en.x - 2, en.y + 4, 8, 24);
+        ctx.fillRect(en.x + en.w - 6, en.y + 4, 8, 24);
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(en.x + 10, en.y + 12, en.w - 20, 10);
+    }
+
+    if (en.hp < en.maxHp) {
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(en.x, en.y - 8, en.w, 4);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(en.x, en.y - 8, en.w * (en.hp / en.maxHp), 4);
+    }
+
+    ctx.restore();
+}
+
+function renderBoss(b) {
+    ctx.save();
+
+    if (b.type === 'reactor') {
+        ctx.fillStyle = '#1e1b4b';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+        let pulse = Math.sin(globalTime * 6) * 15;
+        let pGrad = ctx.createRadialGradient(b.x + b.w / 2, b.y + b.h / 2, 10, b.x + b.w / 2, b.y + b.h / 2, 45 + pulse);
+        pGrad.addColorStop(0, '#ffffff');
+        pGrad.addColorStop(0.4, '#a855f7');
+        pGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = pGrad;
+        ctx.beginPath();
+        ctx.arc(b.x + b.w / 2, b.y + b.h / 2, 50 + pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+            let offset = (globalTime * 40 + i * 80) % b.h;
+            ctx.strokeRect(b.x + 10, b.y + offset, b.w - 20, 8);
+        }
+
+    } else if (b.type === 'shark') {
+        ctx.save();
+        let dir = b.vx > 0 ? 1 : -1;
+        ctx.translate(b.x + b.w / 2, b.y + b.h / 2);
+        ctx.scale(dir, 1);
+
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(b.w / 4, 4, 18, 16);
+        ctx.fillStyle = '#ffffff';
+        for (let d = 0; d < 4; d++) {
+            ctx.fillRect(b.w / 4 + d * 4, 2, 3, 4);
+        }
+
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(b.w / 6, -10, 6, 6);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.moveTo(-10, -b.h / 2);
+        ctx.lineTo(15, -b.h / 2);
+        ctx.lineTo(-5, -b.h / 2 - 25);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(-b.w / 2 - 12, -8, 14, 16);
+        ctx.restore();
+
+    } else if (b.type === 'colossus') {
+        ctx.fillStyle = '#292524';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+
+        ctx.fillStyle = '#ca8a04';
+        ctx.fillRect(b.x + 15, b.y + 15, b.w - 30, 20);
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('☢ PERIGO', b.x + 25, b.y + 30);
+
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(b.x - 8, b.y + 30, 14, 70);
+        ctx.fillRect(b.x + b.w - 6, b.y + 30, 14, 70);
+        ctx.fillStyle = '#4ade80';
+        ctx.fillRect(b.x - 6, b.y + 40, 10, 45);
+
+        ctx.fillStyle = '#44403c';
+        let smash = Math.sin(globalTime * 4) * 8;
+        ctx.fillRect(b.x + 10, b.y + b.h - 35 + smash, 25, 30);
+        ctx.fillRect(b.x + b.w - 35, b.y + b.h - 35 - smash, 25, 30);
+    }
+
+    let barW = b.w + 40;
+    let barX = b.x - 20;
+    let barY = b.y - 25;
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillRect(barX, barY, barW, 10);
+    ctx.strokeStyle = '#ef4444';
+    ctx.strokeRect(barX, barY, barW, 10);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(barX, barY, barW * (b.hp / b.maxHp), 10);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText(b.name, barX, barY - 4);
+
+    ctx.restore();
+}
+
+function renderBullets() {
+    bullets.forEach(b => {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(b.x + 2, b.y + 1, b.w - 4, b.h - 2);
+    });
+}
+
+function renderParticles() {
+    particles.forEach(p => {
+        let alpha = p.life / p.maxLife;
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha;
+        if (p.type === 'bubble') {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.stroke();
+        } else {
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+        }
+    });
+    ctx.globalAlpha = 1.0;
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
